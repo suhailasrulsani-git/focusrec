@@ -1,0 +1,203 @@
+/* FocusRec control bar - light theme: blue + green accents on a soft grey background. */
+:root {
+  --blue: #0473EA;
+  --blue-dark: #0359B5;
+  --blue-soft: #E8F1FD;
+  --green: #38D200;
+  --green-text: #237A00;
+  --green-soft: #EAF8E1;
+  --navy: #0B1F3A;
+  --bg: #F5F7FA;
+  --panel: #FFFFFF;
+  --text: #1A2433;
+  --muted: #5F6B7A;
+  --line: #E3E8EF;
+  --field: #C9D2DE;
+  --red: #C8102E;
+  --red-dark: #A50D26;
+  --red-soft: #FCE8EB;
+  --amber: #B26B00;
+  --amber-soft: #FFF3DF;
+  --grey-soft: #EEF1F5;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.35 "Segoe UI", -apple-system, Arial, sans-serif;
+  user-select: none;
+  overflow: hidden;
+}
+
+button, select, input { font: inherit; color: inherit; }
+
+/* ---------- top strip + title bar (drag to move) ---------- */
+
+.strip { height: 3px; background: linear-gradient(90deg, var(--blue) 0%, var(--blue) 60%, var(--green) 100%); }
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 4px 0 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  -webkit-app-region: drag;
+}
+.logo { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--navy); letter-spacing: .2px; }
+.logo .dot { width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--green)); }
+.win-btns { -webkit-app-region: no-drag; display: flex; }
+.win-btns button {
+  width: 34px; height: 28px; border: 0; background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer;
+}
+.win-btns button:hover { background: var(--grey-soft); color: var(--navy); }
+#btnClose:hover { background: var(--red); color: #fff; }
+
+/* ---------- timer + main buttons ---------- */
+
+.hero { padding: 12px 14px 12px; text-align: center; }
+.timer { font-size: 34px; font-weight: 300; letter-spacing: 1px; color: var(--navy); font-variant-numeric: tabular-nums; }
+.state { color: var(--muted); margin-bottom: 10px; }
+body.recording .state { color: var(--red); font-weight: 600; }
+body.paused .state { color: var(--amber); font-weight: 600; }
+
+.actions { display: flex; gap: 8px; }
+.actions .btn { flex: 1; height: 36px; }
+
+.btn {
+  border: 1px solid var(--field);
+  background: var(--panel);
+  color: var(--navy);
+  border-radius: 6px;
+  padding: 0 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.small { height: 28px; padding: 0 10px; font-size: 12px; }
+.btn.on { border-color: var(--green-text); color: var(--green-text); background: var(--green-soft); }
+
+.btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.btn.primary:hover:not(:disabled) { background: var(--blue-dark); border-color: var(--blue-dark); color: #fff; }
+
+/* Record keeps the universal red (deep red #C8102E). */
+.btn.rec { background: var(--red); border-color: var(--red); color: #fff; }
+.btn.rec:hover:not(:disabled) { background: var(--red-dark); border-color: var(--red-dark); color: #fff; }
+.ico-rec {
+  display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #fff; margin-right: 7px; vertical-align: 1px;
+}
+
+/* zoom / draw state under the timer */
+.badges { display: flex; justify-content: center; gap: 6px; margin: -4px 0 10px; }
+.badge {
+  font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 10px; background: var(--grey-soft); color: var(--muted);
+}
+.badge.on { background: var(--green-soft); color: var(--green-text); }
+
+/* ---------- tabs (green marker like the portal menu) ---------- */
+
+.tabs { display: flex; margin: 0 12px 12px; border-bottom: 1px solid var(--line); }
+.tab {
+  flex: 1; height: 32px; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px;
+  background: transparent; color: var(--muted); cursor: pointer;
+}
+.tab:hover { color: var(--navy); }
+.tab.active { color: var(--navy); font-weight: 600; border-bottom-color: var(--green); }
+
+/* ---------- cards ---------- */
+
+.card {
+  margin: 0 12px 10px;
+  padding: 4px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+}
+.row + .row { border-top: 1px solid var(--line); }
+.row > span:first-child { color: var(--text); white-space: nowrap; }
+.row.tools { padding: 4px 0; flex-wrap: wrap; }
+.inline { display: flex; align-items: center; gap: 6px; }
+
+select {
+  max-width: 210px;
+  height: 28px;
+  background: var(--panel);
+  border: 1px solid var(--field);
+  border-radius: 6px;
+  padding: 0 6px;
+  color: var(--text);
+}
+select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+select:disabled { opacity: 0.55; background: var(--bg); }
+
+/* simple switch */
+input[type="checkbox"] {
+  appearance: none;
+  width: 34px; height: 20px; border-radius: 10px;
+  background: var(--field); position: relative; cursor: pointer; margin: 0;
+  transition: background 0.15s;
+}
+input[type="checkbox"]::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(11, 31, 58, 0.25); transition: left 0.15s;
+}
+input[type="checkbox"]:checked { background: var(--blue); }
+input[type="checkbox"]:checked::after { left: 16px; }
+input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
+
+/* draw tools */
+.tool {
+  height: 26px; padding: 0 9px; border-radius: 6px; border: 1px solid var(--field); background: var(--panel);
+  color: var(--navy); cursor: pointer;
+}
+.tool.active { border-color: var(--blue); background: var(--blue-soft); color: var(--blue-dark); font-weight: 600; }
+.swatch {
+  width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--panel); background: var(--c); cursor: pointer; padding: 0;
+  box-shadow: 0 0 0 1px var(--field);
+}
+.swatch.active { box-shadow: 0 0 0 2px var(--blue); }
+.tool:disabled, .swatch:disabled { opacity: 0.4; cursor: default; }
+
+/* save location */
+.path {
+  color: var(--muted); font-size: 12px; padding: 0 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.saved {
+  font-size: 12px; padding: 6px 8px; margin-bottom: 8px; border-radius: 6px; background: var(--green-soft);
+  color: var(--green-text); font-weight: 600; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hidden { display: none !important; }
+
+.hint { color: var(--muted); font-size: 12px; padding: 2px 0 8px; }
+.value { font-weight: 600; color: var(--navy); }
+
+/* hotkey editor */
+.keybox {
+  min-width: 120px; height: 26px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--field); background: var(--panel);
+  color: var(--navy); font: 12px Consolas, monospace; cursor: pointer; text-align: center;
+}
+.keybox:hover { border-color: var(--blue); }
+.keybox.empty { color: var(--muted); font-family: inherit; }
+.keybox.listening { border-color: var(--blue); background: var(--blue-soft); color: var(--blue-dark); }
+.keybox:disabled { opacity: 0.5; cursor: default; }
+
+kbd {
+  font: 11px Consolas, monospace; background: var(--grey-soft); border: 1px solid var(--line); border-radius: 4px;
+  padding: 0 4px; color: var(--navy);
+}
+
+/* messages at the bottom */
+.status { margin: 6px 12px 10px; min-height: 18px; color: var(--blue-dark); font-size: 12px; }
+.status.error { color: var(--red); }

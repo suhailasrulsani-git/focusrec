@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FocusRec demo</title>
+<!-- Demo stage: a made-up app + title cards + captions. demo.js drives it through Edge's debug port. -->
+<style>
+  :root {
+    --blue: #0473EA; --blue-dark: #0359B5; --blue-soft: #E8F1FD;
+    --green: #38D200; --green-text: #237A00; --green-soft: #EAF8E1;
+    --navy: #0B1F3A; --bg: #F5F7FA; --panel: #FFFFFF; --text: #1A2433; --muted: #5F6B7A; --line: #E3E8EF;
+    --red: #C8102E; --red-soft: #FBE7EA; --amber: #B26B00; --amber-soft: #FFF3DC;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font: 16px "Segoe UI", system-ui, sans-serif; cursor: default; user-select: none; }
+  .strip { height: 4px; background: linear-gradient(90deg, var(--blue) 0%, var(--blue) 60%, var(--green) 100%); }
+
+  .scene { position: absolute; inset: 0; opacity: 0; transition: opacity .45s ease; pointer-events: none; }
+  .scene.on { opacity: 1; pointer-events: auto; }
+
+  /* ---------- title / end cards ---------- */
+  .card-scene { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .card-scene .strip { position: absolute; top: 0; left: 0; right: 0; }
+  .brand { display: flex; align-items: center; gap: 28px; }
+  .mark { width: 104px; height: 104px; border-radius: 26px; background: var(--navy); display: grid; place-items: center; }
+  .mark i { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--green)); }
+  .brand h1 { margin: 0; font-size: 112px; font-weight: 700; color: var(--navy); letter-spacing: -2px; }
+  .tagline { margin: 26px 0 44px; font-size: 36px; color: var(--muted); }
+  .chips { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 1400px; }
+  .chip { padding: 12px 26px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-size: 26px; color: var(--navy); font-weight: 600; }
+  .chip b { color: var(--blue); }
+  .foot { position: absolute; bottom: 70px; font-size: 22px; color: var(--muted); }
+
+  /* ---------- the made-up app ---------- */
+  .top { height: 68px; background: var(--panel); border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 28px; gap: 16px; }
+  .top .logo { width: 38px; height: 38px; border-radius: 10px; background: var(--navy); display: grid; place-items: center; }
+  .top .logo i { width: 16px; height: 16px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--green)); }
+  .top .name { font-size: 22px; font-weight: 600; color: var(--navy); }
+  .top .sub { font-size: 14px; color: var(--muted); padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; }
+  .top .search { margin-left: 120px; width: 460px; height: 40px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); display: flex; align-items: center; padding: 0 14px; font-size: 15px; }
+  .top .me { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 16px; color: var(--navy); }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--blue); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 15px; }
+
+  .nav { position: absolute; top: 72px; left: 0; bottom: 0; width: 240px; background: var(--panel); border-right: 1px solid var(--line); padding: 20px 0; }
+  .nav div { height: 48px; display: flex; align-items: center; gap: 14px; padding: 0 26px; color: var(--muted); font-size: 17px; border-left: 4px solid transparent; }
+  .nav div i { width: 10px; height: 10px; border-radius: 3px; background: #C5CEDA; }
+  .nav div.active { background: var(--blue-soft); color: var(--blue-dark); border-left-color: var(--blue); font-weight: 600; }
+  .nav div.active i { background: var(--blue); }
+
+  .main { position: absolute; top: 72px; left: 240px; right: 0; bottom: 0; padding: 26px 48px; }
+  .crumb { font-size: 15px; color: var(--muted); }
+  .main h2 { margin: 4px 0 20px; font-size: 32px; color: var(--navy); font-weight: 600; }
+  .grid { display: grid; grid-template-columns: 960px 520px; gap: 32px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .form { padding: 26px 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px 26px; }
+  .field label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 7px; font-weight: 600; }
+  .field input, .field textarea, .select { width: 100%; height: 46px; border: 1px solid #CBD3DE; border-radius: 8px; padding: 0 14px; font: inherit; font-size: 17px; color: var(--text); background: #fff; outline: none; }
+  .field input:focus, .field textarea:focus, .select.open { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+  .field textarea { height: 76px; padding-top: 10px; resize: none; }
+  .wide { grid-column: 1 / -1; }
+  .select { display: flex; align-items: center; justify-content: space-between; position: relative; cursor: pointer; }
+  .select .ph { color: #9AA5B4; }
+  .select::after { content: ""; width: 9px; height: 9px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg) translateY(-3px); }
+  .menu { position: absolute; top: 50px; left: 0; right: 0; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 28px rgba(11, 31, 58, .14); z-index: 5; display: none; padding: 6px 0; }
+  .select.open .menu { display: block; }
+  .menu div { height: 42px; display: flex; align-items: center; padding: 0 14px; font-size: 16px; }
+  .menu div:hover { background: var(--blue-soft); }
+  .buttons { display: flex; justify-content: flex-end; gap: 14px; margin-top: 4px; }
+  .btn { height: 50px; padding: 0 26px; border-radius: 8px; border: 1px solid #CBD3DE; background: #fff; color: var(--navy); font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  .side { padding: 26px 30px; }
+  .side h3, .table h3 { margin: 0 0 16px; font-size: 19px; color: var(--navy); }
+  .kv { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 16px; }
+  .kv span:first-child { color: var(--muted); }
+  .total { margin: 22px 0 6px; font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing: .4px; text-transform: uppercase; }
+  #total { font-size: 46px; font-weight: 700; color: var(--navy); }
+  .policy { margin-top: 18px; padding: 12px 14px; background: var(--bg); border-radius: 8px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+
+  .table { margin-top: 24px; padding: 20px 30px 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding: 0 0 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  .st { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .st.ok { background: var(--green-soft); color: var(--green-text); }
+  .st.wait { background: var(--amber-soft); color: var(--amber); }
+  .st.no { background: var(--red-soft); color: var(--red); }
+  tr.new td { background: var(--blue-soft); }
+
+  .done { display: none; padding: 46px 30px; text-align: center; }
+  .sent .form { display: none; }
+  .sent .done { display: block; }
+  .tick { width: 96px; height: 96px; border-radius: 50%; background: var(--green-soft); margin: 0 auto 20px; display: grid; place-items: center; }
+  .tick i { width: 26px; height: 46px; border-right: 7px solid var(--green-text); border-bottom: 7px solid var(--green-text); transform: rotate(45deg) translate(-4px, -6px); }
+  .done h4 { margin: 0 0 10px; font-size: 32px; color: var(--navy); }
+  .done p { margin: 0 0 22px; font-size: 18px; color: var(--muted); }
+  .ref { display: inline-block; padding: 8px 18px; border-radius: 8px; background: var(--blue-soft); color: var(--blue-dark); font-weight: 700; font-size: 20px; letter-spacing: .5px; }
+
+  /* ---------- result pages ---------- */
+  .show { display: flex; flex-direction: column; align-items: center; padding-top: 44px; }
+  .show .label { font-size: 26px; color: var(--navy); font-weight: 600; margin-bottom: 18px; display: flex; align-items: center; gap: 12px; }
+  .show .label span { font-size: 18px; color: var(--muted); font-weight: 400; }
+  .file { width: 26px; height: 32px; border-radius: 4px; border: 2px solid var(--blue); position: relative; }
+  .file::after { content: ""; position: absolute; left: 4px; right: 4px; top: 8px; height: 2px; background: var(--blue); box-shadow: 0 6px 0 var(--blue), 0 12px 0 var(--blue); }
+  #shotImg { max-width: 1560px; max-height: 860px; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(11, 31, 58, .18); background: #fff; }
+  .browser { width: 1500px; height: 860px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(11, 31, 58, .18); background: #fff; display: flex; flex-direction: column; }
+  .bar { height: 46px; background: var(--bg); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 0 16px; flex: none; }
+  .bar i { width: 12px; height: 12px; border-radius: 50%; background: #D3DAE3; }
+  .bar span { margin-left: 18px; flex: 1; height: 30px; border-radius: 6px; background: #fff; border: 1px solid var(--line); display: flex; align-items: center; padding: 0 12px; font-size: 15px; color: var(--muted); }
+  .browser iframe { flex: 1; border: 0; width: 100%; }
+
+  .extras { display: flex; flex-direction: column; align-items: center; padding-top: 50px; }
+  .extras h2 { margin: 0 0 34px; font-size: 40px; color: var(--navy); }
+  .extras h2 span { color: var(--muted); font-weight: 400; }
+  .pics { display: flex; gap: 56px; align-items: flex-start; }
+  .pic { display: flex; flex-direction: column; align-items: center; }
+  .pic h3 { margin: 0 0 14px; font-size: 22px; color: var(--navy); }
+  .pic img { max-height: 760px; border-radius: 10px; box-shadow: 0 14px 40px rgba(11, 31, 58, .16); border: 1px solid var(--line); }
+  .pic.panel img { width: 360px; box-shadow: none; border: 0; }
+
+  /* ---------- caption bar ---------- */
+  #cap { position: fixed; left: 50%; bottom: 34px; transform: translate(-50%, 24px); opacity: 0; transition: opacity .35s ease, transform .35s ease;
+    display: flex; align-items: center; gap: 18px; padding: 14px 30px 14px 16px; border-radius: 999px; background: rgba(11, 31, 58, .95);
+    color: #fff; font-size: 30px; font-weight: 600; white-space: nowrap; box-shadow: 0 12px 34px rgba(11, 31, 58, .3); z-index: 50; }
+  #cap.on { opacity: 1; transform: translate(-50%, 0); }
+  #cap .num { width: 46px; height: 46px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--green)); display: grid; place-items: center; font-size: 24px; flex: none; }
+  #cap .num:empty { display: none; }
+  #cap kbd { font: 600 24px Consolas, monospace; background: #fff; color: var(--navy); padding: 5px 14px; border-radius: 8px; }
+  #cap kbd:empty { display: none; }
+</style>
+</head>
+<body>
+
+<section id="s-title" class="scene card-scene on">
+  <div class="strip"></div>
+  <div class="brand"><div class="mark"><i></i></div><h1>FocusRec</h1></div>
+  <div class="tagline">A small, free screen recorder - one portable .exe, no install</div>
+  <div class="chips">
+    <div class="chip">Zoom in / out</div><div class="chip">Cursor highlight</div><div class="chip">Draw on screen</div>
+    <div class="chip">Screenshot guides</div><div class="chip">Your own hotkeys</div><div class="chip">MP4 + sound</div>
+  </div>
+  <div class="foot">This video was recorded with FocusRec itself</div>
+</section>
+
+<section id="s-app" class="scene">
+  <div class="strip"></div>
+  <div class="top">
+    <div class="logo"><i></i></div><div class="name">Expenses</div><div class="sub">demo app</div>
+    <div class="search">Search claims, receipts...</div>
+    <div class="me"><div class="avatar">AT</div>Alex Tan</div>
+  </div>
+  <div class="nav">
+    <div><i></i>Dashboard</div><div class="active"><i></i>New claim</div><div><i></i>My claims</div>
+    <div><i></i>Approvals</div><div><i></i>Reports</div><div><i></i>Settings</div>
+  </div>
+  <div class="main" id="main">
+    <div class="crumb">Claims / New claim</div>
+    <h2>New expense claim</h2>
+    <div class="grid">
+      <div>
+        <div class="card">
+          <div class="form">
+            <div class="field"><label>Employee name</label><input id="name" autocomplete="off" placeholder="Full name"></div>
+            <div class="field"><label>Date</label><input id="date" value="28 Oct 2026" autocomplete="off"></div>
+            <div class="field"><label>Category</label>
+              <div class="select" id="cat"><span class="ph" id="catText">Choose...</span>
+                <div class="menu"><div>Meals</div><div id="optTravel">Taxi / travel</div><div>Hotel</div><div>Mobile bill</div></div>
+              </div>
+            </div>
+            <div class="field"><label>Amount (SGD)</label><input id="amount" autocomplete="off" placeholder="0.00"></div>
+            <div class="field wide"><label>Description</label><textarea id="desc" placeholder="What was it for?"></textarea></div>
+            <div class="wide buttons"><button class="btn">Save draft</button><button class="btn primary" id="submit">Submit claim</button></div>
+          </div>
+          <div class="done">
+            <div class="tick"><i></i></div>
+            <h4>Claim submitted</h4>
+            <p>Sent to Priya N. for approval</p>
+            <div class="ref" id="ref">EC-1042</div>
+          </div>
+        </div>
+        <div class="card table">
+          <h3>Recent claims</h3>
+          <table id="table">
+            <thead><tr><th>Claim</th><th>Date</th><th>Category</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody id="rows">
+              <tr><td>EC-1041</td><td>22 Oct 2026</td><td>Taxi / travel</td><td>SGD 31.20</td><td><span class="st ok">Approved</span></td></tr>
+              <tr><td>EC-1040</td><td>19 Oct 2026</td><td>Mobile bill</td><td>SGD 65.00</td><td><span class="st no">Rejected</span></td></tr>
+              <tr><td>EC-1039</td><td>14 Oct 2026</td><td>Hotel</td><td>SGD 412.50</td><td><span class="st wait">Pending</span></td></tr>
+              <tr><td>EC-1038</td><td>09 Oct 2026</td><td>Meals</td><td>SGD 118.00</td><td><span class="st ok">Approved</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="card side">
+          <h3>Claim summary</h3>
+          <div class="kv"><span>Employee</span><span id="sumName">-</span></div>
+          <div class="kv"><span>Category</span><span id="sumCat">-</span></div>
+          <div class="kv"><span>Approver</span><span>Priya N. (Finance)</span></div>
+          <div class="total">Total</div>
+          <div><span id="total">SGD 0.00</span></div>
+          <div class="policy">Claims over SGD 500 need two approvals. Receipts older than 90 days are not accepted.
+            Taxi claims need the pick-up and drop-off address in the description.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s-shot" class="scene show">
+  <div class="label"><div class="file"></div><b id="shotName"></b><span>- saved with the caption strip</span></div>
+  <img id="shotImg" alt="">
+</section>
+
+<section id="s-guide" class="scene show">
+  <div class="label"><div class="file"></div><b>guide.html</b><span>- made for you, plus guide.docx (Word) and the PNG files</span></div>
+  <div class="browser"><div class="bar"><i></i><i></i><i></i><span id="guideUrl">guide.html</span></div><iframe id="guide"></iframe></div>
+</section>
+
+<section id="s-extras" class="scene extras">
+  <h2>Only you see these <span>- never in the video or screenshots</span></h2>
+  <div class="pics">
+    <div class="pic"><h3>Control bar - zoom state</h3><img id="picControl" alt=""></div>
+    <div class="pic"><h3>Set your own hotkeys</h3><img id="picKeys" alt=""></div>
+    <div class="pic panel"><h3>Private corner panel</h3><img id="picPanel" alt=""></div>
+  </div>
+</section>
+
+<section id="s-end" class="scene card-scene">
+  <div class="strip"></div>
+  <div class="brand"><div class="mark"><i></i></div><h1>FocusRec</h1></div>
+  <div class="tagline">Record, zoom, draw and make step-by-step guides</div>
+  <div class="chips">
+    <div class="chip">One portable <b>.exe</b></div><div class="chip">No install</div><div class="chip">Saves <b>MP4</b></div><div class="chip">Free + open source (MIT)</div>
+  </div>
+</section>
+
+<div id="cap"><span class="num"></span><span class="txt"></span><kbd></kbd></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // The made-up app reacts to real clicks, like a real app.
+  $('cat').addEventListener('click', (e) => {
+    const pick = e.target.closest('.menu div');
+    if (pick) {
+      $('catText').textContent = pick.textContent;
+      $('catText').classList.remove('ph');
+      $('sumCat').textContent = pick.textContent;
+      e.stopPropagation();
+      $('cat').classList.remove('open');
+      return;
+    }
+    $('cat').classList.toggle('open');
+  });
+  $('submit').addEventListener('click', () => {
+    $('main').classList.add('sent');
+    const tr = document.createElement('tr');
+    tr.className = 'new';
+    tr.innerHTML = `<td>EC-1042</td><td>28 Oct 2026</td><td>${$('sumCat').textContent}</td><td>${$('total').textContent}</td><td><span class="st wait">Pending</span></td>`;
+    $('rows').prepend(tr);
+    $('rows').lastElementChild.remove();
+  });
+
+  // Called by demo.js.
+  window.stage = {
+    scene(name) {
+      document.querySelectorAll('.scene').forEach((s) => s.classList.toggle('on', s.id === 's-' + name));
+      return true;
+    },
+    caption(text, key = '', num = '') {
+      const cap = $('cap');
+      if (!text) { cap.classList.remove('on'); return true; }
+      cap.querySelector('.txt').textContent = text;
+      cap.querySelector('kbd').textContent = key;
+      cap.querySelector('.num').textContent = num;
+      cap.classList.add('on');
+      return true;
+    },
+    // Centre of an element, in screen pixels (the page is full screen).
+    rect(sel) {
+      const r = document.querySelector(sel).getBoundingClientRect();
+      const k = window.devicePixelRatio || 1;
+      return { x: (r.left + r.width / 2) * k, y: (r.top + r.height / 2) * k, left: r.left * k, top: r.top * k, right: r.right * k, bottom: r.bottom * k };
+    },
+    async type(sel, text, ms = 75) {
+      const el = document.querySelector(sel);
+      el.focus();
+      for (const ch of text) {
+        el.value += ch;
+        el.dispatchEvent(new Event('input'));
+        await sleep(ms);
+      }
+      return true;
+    },
+    setPictures(p) {
+      $('picControl').src = p.control;
+      $('picKeys').src = p.keys;
+      $('picPanel').src = p.panel;
+      return true;
+    },
+    showShot(src, name) {
+      $('shotName').textContent = name;
+      return new Promise((r) => {
+        $('shotImg').onload = () => r(true);
+        $('shotImg').onerror = () => r(false);
+        $('shotImg').src = src;
+      });
+    },
+    showGuide(html) {
+      return new Promise((r) => {
+        $('guide').onload = () => r(true);
+        $('guide').srcdoc = html;
+      });
+    },
+    // Smooth scroll of the guide page from top to bottom.
+    async scrollGuide(ms) {
+      const w = $('guide').contentWindow;
+      const max = w.document.documentElement.scrollHeight - w.innerHeight;
+      const t0 = performance.now();
+      for (;;) {
+        const t = Math.min(1, (performance.now() - t0) / ms);
+        w.scrollTo(0, max * (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2));
+        if (t >= 1) break;
+        await sleep(16);
+      }
+      return max;
+    },
+  };
+  // ---------- background music: an original soft tune, made here with Web Audio ----------
+  // F major, I - iii - vi - IV (Fmaj7, Am7, Dm7, Bbmaj7), one bar each. Soft pad + piano-like
+  // arpeggio + gentle bass + a quiet shaker, through a small reverb. Dips while the voice talks.
+  const Music = (() => {
+    const BEAT = 60 / 78, BAR = BEAT * 4, LEVEL = 0.48, DUCKED = 0.21;   // music ~-30 dBFS, ~-37 while the voice (~-20) talks
+    const CHORDS = [
+      { bass: 41, notes: [53, 57, 60, 64] },   // Fmaj7
+      { bass: 45, notes: [55, 57, 60, 64] },   // Am7
+      { bass: 38, notes: [53, 57, 60, 62] },   // Dm7
+      { bass: 46, notes: [53, 57, 58, 62] },   // Bbmaj7
+    ];
+    const ARP = [0, 2, 1, 3, null, 2, 1, null];          // eighth notes; null = rest
+    const hz = (n) => 440 * Math.pow(2, (n - 69) / 12);
+    let ctx = null, bus, duck, master, noise, timer = null, start = 0, nextBar = 0, lastSpeech = -1e9, seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);   // same "random" every run
+
+    function setup() {
+      ctx = new AudioContext();
+      bus = ctx.createGain();
+      const dry = ctx.createGain(); dry.gain.value = 0.8;
+      const wet = ctx.createGain(); wet.gain.value = 0.35;
+      const verb = ctx.createConvolver();
+      const len = Math.round(ctx.sampleRate * 2.6);
+      const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = ir.getChannelData(ch);
+        for (let i = 0; i < len; i++) d[i] = (rnd() * 2 - 1) * Math.pow(1 - i / len, 3);
+      }
+      verb.buffer = ir;
+      duck = ctx.createGain(); duck.gain.value = LEVEL;
+      master = ctx.createGain(); master.gain.value = 0;
+      const comp = ctx.createDynamicsCompressor();     // safety limiter only, so the level stays even
+      comp.threshold.value = -6; comp.ratio.value = 4; comp.knee.value = 6;
+      bus.connect(dry).connect(duck);
+      bus.connect(verb).connect(wet).connect(duck);
+      duck.connect(master).connect(comp).connect(ctx.destination);
+      noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const nd = noise.getChannelData(0);
+      for (let i = 0; i < nd.length; i++) nd[i] = rnd() * 2 - 1;
+    }
+
+    function pad(t, notes, dur) {
+      for (const n of notes) for (const det of [-7, 7]) {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz(n); o.detune.value = det;
+        const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 850; f.Q.value = 0.4;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.016, t + 1.1);
+        g.gain.setValueAtTime(0.016, t + dur - 0.1);
+        g.gain.linearRampToValueAtTime(0, t + dur + 1.2);
+        o.connect(f).connect(g).connect(bus);
+        o.start(t); o.stop(t + dur + 1.3);
+      }
+    }
+
+    function pluck(t, n, vel) {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.11 * vel, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0005, t + 1.8);
+      const o1 = ctx.createOscillator(); o1.type = 'sine'; o1.frequency.value = hz(n);
+      const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.value = hz(n) * 2;
+      const g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0.25, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      o1.connect(g); o2.connect(g2).connect(g); g.connect(bus);
+      o1.start(t); o2.start(t); o1.stop(t + 1.9); o2.stop(t + 1.9);
+    }
+
+    function bass(t, n, dur) {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = hz(n);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.13, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.05, t + dur * 0.8);
+      g.gain.linearRampToValueAtTime(0, t + dur);
+      o.connect(g).connect(bus);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+
+    function shaker(t, vel) {
+      const s = ctx.createBufferSource(); s.buffer = noise;
+      const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 6500;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.02 * vel, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+      s.connect(f).connect(g).connect(bus);
+      s.start(t, rnd() * 0.8); s.stop(t + 0.1);
+    }
+
+    function playBar(t, i) {
+      const c = CHORDS[i % CHORDS.length];
+      pad(t, c.notes, BAR);
+      bass(t, c.bass, BEAT * 2);
+      bass(t + BEAT * 2, c.bass, BEAT * 2);
+      const tones = c.notes.map((n) => n + 12);
+      ARP.forEach((k, j) => {
+        if (k === null || (i === 0 && j < 4)) return;          // first half bar: pad only
+        const when = t + j * BEAT / 2 + (rnd() - 0.5) * 0.016;  // a little human timing
+        pluck(when, tones[k], (j % 4 === 0 ? 0.95 : 0.65) + rnd() * 0.15);
+      });
+      if (i >= 2) for (let j = 1; j < 8; j += 2) shaker(t + j * BEAT / 2, 0.6 + rnd() * 0.4);
+    }
+
+    // Schedule well ahead, so a busy page never makes the music stutter.
+    const history = [];    // [seconds, voice talking?, music level] every tick - to check the ducking
+    function tick() {
+      while (nextBar * BAR + start < ctx.currentTime + 1.6) { playBar(start + nextBar * BAR, nextBar); nextBar++; }
+      const talking = Voice.talking();
+      if (talking) lastSpeech = ctx.currentTime;
+      duck.gain.setTargetAtTime(talking || ctx.currentTime - lastSpeech < 1.2 ? DUCKED : LEVEL, ctx.currentTime, 0.25);
+      history.push([+(ctx.currentTime - start).toFixed(1), talking ? 1 : 0, +duck.gain.value.toFixed(3)]);
+    }
+
+    return {
+      context() { if (!ctx) setup(); return ctx; },
+      async start(fadeMs = 1500) {
+        if (!ctx) setup();
+        await ctx.resume();
+        start = ctx.currentTime + 0.1; nextBar = 0;
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(0, ctx.currentTime);
+        master.gain.linearRampToValueAtTime(1, ctx.currentTime + fadeMs / 1000);
+        clearInterval(timer);
+        tick();
+        timer = setInterval(tick, 200);
+        return ctx.state;
+      },
+      async fadeOut(ms = 2500) {
+        if (!ctx) return true;
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+        master.gain.linearRampToValueAtTime(0, ctx.currentTime + ms / 1000);
+        await sleep(ms + 100);
+        clearInterval(timer);
+        return true;
+      },
+      history: () => history,
+    };
+  })();
+
+  // ---------- voice: clips recorded once by voices.js (Microsoft Andrew); word marks let demo.js act on a word ----------
+  const Voice = (() => {
+    const clips = {};      // name -> { buffer, marks: {word: ms} }
+    const lines = {};      // id -> { marks: {word: {done, resolve}}, end }
+    let playing = 0;
+
+    function wait(o) { return o.done ? Promise.resolve(true) : new Promise((r) => { o.resolve = r; }); }
+    function fire(o) { if (!o.done) { o.done = true; if (o.resolve) o.resolve(true); } }
+
+    return {
+      async load(name, wavBase64, marks) {
+        const bin = Uint8Array.from(atob(wavBase64), (c) => c.charCodeAt(0));
+        clips[name] = { buffer: await Music.context().decodeAudioData(bin.buffer), marks };
+        return Math.round(clips[name].buffer.duration * 1000);
+      },
+      // Start a clip now. Marks fire when their word is said.
+      speak(id, name) {
+        const clip = clips[name];
+        const ctx = Music.context();
+        const line = { marks: {}, end: { done: false } };
+        lines[id] = line;
+        const src = ctx.createBufferSource();
+        src.buffer = clip.buffer;
+        src.connect(ctx.destination);
+        playing++;
+        for (const [w, ms] of Object.entries(clip.marks)) {
+          line.marks[w] = { done: false };
+          setTimeout(() => fire(line.marks[w]), ms);
+        }
+        src.onended = () => { playing--; Object.values(line.marks).forEach(fire); fire(line.end); };
+        src.start();
+        return true;
+      },
+      mark: (id, word) => wait(lines[id].marks[word]),
+      end: (id) => wait(lines[id].end).then(() => 'ok'),
+      talking: () => playing > 0,
+    };
+  })();
+
+  stage.music = Music;
+  stage.voice = Voice;
+
+  $('name').addEventListener('input', () => { $('sumName').textContent = $('name').value || '-'; });
+  $('amount').addEventListener('input', () => {
+    const n = parseFloat($('amount').value);
+    $('total').textContent = 'SGD ' + (isNaN(n) ? '0.00' : n.toFixed(2));
+  });
+</script>
+</body>
+</html>

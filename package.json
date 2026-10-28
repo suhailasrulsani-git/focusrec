@@ -1,0 +1,46 @@
+{
+  "name": "focusrec",
+  "productName": "FocusRec",
+  "version": "0.2.0",
+  "description": "Small portable screen recorder with zoom, cursor and click highlight, draw on screen, mic and system audio.",
+  "main": "src/main.js",
+  "license": "MIT",
+  "author": "Suhail",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win portable",
+    "dist:mac": "electron-builder --mac zip"
+  },
+  "build": {
+    "appId": "io.github.focusrec",
+    "productName": "FocusRec",
+    "npmRebuild": false,
+    "files": [
+      "src/**/*",
+      "package.json",
+      "!node_modules/koffi/{src,vendor,doc}/**",
+      "!node_modules/koffi/build/koffi/{linux,freebsd,openbsd,musl}_*/**",
+      "!node_modules/koffi/build/koffi/win32_ia32/**",
+      "!node_modules/uiohook-napi/prebuilds/linux-*/**",
+      "!node_modules/uiohook-napi/{src,libuiohook}/**"
+    ],
+    "win": {
+      "target": "portable",
+      "artifactName": "FocusRec-${version}-portable.exe"
+    },
+    "mac": {
+      "target": "zip",
+      "category": "public.app-category.productivity",
+      "artifactName": "FocusRec-${version}-mac.zip"
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "docx": "9.7.1",
+    "koffi": "2.16.3",
+    "uiohook-napi": "^1.5.5"
+  }
+}

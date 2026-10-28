@@ -1,0 +1,56 @@
+/* Private corner panel - same colours as the control bar. */
+:root {
+  --blue: #0473EA;
+  --green: #38D200;
+  --green-text: #237A00;
+  --green-soft: #EAF8E1;
+  --navy: #0B1F3A;
+  --text: #1A2433;
+  --muted: #5F6B7A;
+  --line: #E3E8EF;
+  --red: #C8102E;
+  --amber: #B26B00;
+}
+
+html, body {
+  margin: 0;
+  background: transparent;
+  color: var(--text);
+  font: 12px/1.4 "Segoe UI", -apple-system, Arial, sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+body { width: 240px; }
+
+.box, .toast {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(11, 31, 58, 0.18);
+  overflow: hidden;
+}
+
+/* blue -> green strip on top, like the portal */
+.box::before {
+  content: ""; display: block; height: 3px; margin: -8px -10px 6px;
+  background: linear-gradient(90deg, var(--blue) 0%, var(--blue) 60%, var(--green) 100%);
+}
+
+.box { padding: 8px 10px; }
+.toast { padding: 7px 10px; margin-bottom: 6px; font-weight: 600; color: var(--green-text); background: var(--green-soft); border-color: #CDEBB9; }
+.hidden { display: none; }
+
+.row { display: flex; justify-content: space-between; padding: 1px 0; }
+.row > span:first-child { color: var(--muted); }
+.val { font-weight: 600; color: var(--navy); font-variant-numeric: tabular-nums; }
+.val.on { color: var(--green-text); }
+
+.rec { display: flex; align-items: center; gap: 6px; color: var(--red) !important; font-weight: 700; }
+.rec .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+.rec.paused { color: var(--amber) !important; }
+.rec.paused .dot { background: var(--amber); }
+
+.keys { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.keys .row span:first-child { color: var(--navy); font-family: Consolas, monospace; font-size: 11px; }
+.keys .row span:last-child { color: var(--muted); }

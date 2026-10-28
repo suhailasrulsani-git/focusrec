@@ -1,0 +1,176 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; media-src 'self' blob: mediastream:">
+  <title>FocusRec</title>
+  <link rel="stylesheet" href="control.css">
+</head>
+<body>
+  <div class="strip"></div>
+  <header class="titlebar">
+    <span class="logo"><span class="dot"></span>FocusRec</span>
+    <span class="win-btns">
+      <button id="btnMin" title="Minimise">&#8211;</button>
+      <button id="btnClose" title="Close">&#10005;</button>
+    </span>
+  </header>
+
+  <section class="hero">
+    <div id="timer" class="timer">00:00</div>
+    <div id="state" class="state">Ready</div>
+    <div id="badges" class="badges hidden">
+      <span id="badgeZoom" class="badge">Zoom off</span>
+      <span id="badgeDraw" class="badge">Draw off</span>
+    </div>
+    <div class="actions">
+      <button id="btnRecord" class="btn rec"><span class="ico-rec"></span>Record</button>
+      <button id="btnPause" class="btn" disabled>Pause</button>
+      <button id="btnStop" class="btn" disabled>Stop</button>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="record">Record</button>
+    <button class="tab" data-tab="shots">Screenshots</button>
+    <button class="tab" data-tab="keys">Hotkeys</button>
+  </nav>
+
+  <!-- ---------- Record tab ---------- -->
+  <div class="page" id="page-record">
+    <section class="card">
+      <label class="row">
+        <span>Screen</span>
+        <select id="selScreen"></select>
+      </label>
+      <label class="row">
+        <span>Microphone</span>
+        <select id="selMic"></select>
+      </label>
+      <label class="row toggle">
+        <span>PC sound</span>
+        <input id="chkSystem" type="checkbox">
+      </label>
+    </section>
+
+    <section class="card">
+      <label class="row toggle">
+        <span>Cursor + click highlight</span>
+        <input id="chkHighlight" type="checkbox">
+      </label>
+      <label class="row toggle">
+        <span>3-2-1 countdown</span>
+        <input id="chkCountdown" type="checkbox">
+      </label>
+      <div class="row">
+        <span>Zoom</span>
+        <span class="inline">
+          <select id="selZoom">
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+            <option value="2.5">2.5x</option>
+            <option value="3">3x</option>
+          </select>
+          <button id="btnZoom" class="btn small" disabled>Zoom in</button>
+        </span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <span>Draw</span>
+        <button id="btnDraw" class="btn small" disabled>Draw: off</button>
+      </div>
+      <div class="row tools">
+        <span class="inline">
+          <button class="tool active" data-tool="pen" disabled>Pen</button>
+          <button class="tool" data-tool="box" disabled>Box</button>
+          <button class="tool" data-tool="arrow" disabled>Arrow</button>
+        </span>
+        <span class="inline">
+          <button class="swatch active" data-color="#ff3b30" title="Red" disabled></button>
+          <button class="swatch" data-color="#ffd60a" title="Yellow" disabled></button>
+          <button class="swatch" data-color="#30d158" title="Green" disabled></button>
+          <button class="swatch" data-color="#0a84ff" title="Blue" disabled></button>
+          <button id="btnClear" class="btn small" disabled>Clear</button>
+        </span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <span>Save to</span>
+        <span class="inline">
+          <button id="btnFolder" class="btn small">Change</button>
+          <button id="btnOpen" class="btn small">Open</button>
+        </span>
+      </div>
+      <div id="folder" class="path"></div>
+      <div id="saved" class="saved hidden"></div>
+    </section>
+  </div>
+
+  <!-- ---------- Screenshots tab ---------- -->
+  <div class="page hidden" id="page-shots">
+    <section class="card">
+      <div class="row">
+        <span>Screenshot</span>
+        <button id="btnShot" class="btn small primary">Take screenshot</button>
+      </div>
+      <div class="hint">Hotkey: <kbd id="shotKey"></kbd> - works with or without recording. Captures the whole screen the mouse is on, marks the mouse with a red circle and adds "Step N - app name" with the date and time.</div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <span>Current guide</span>
+        <span id="guideCount" class="value">No screenshots yet</span>
+      </div>
+      <div id="guideName" class="path"></div>
+      <div class="row">
+        <button id="btnGuideNew" class="btn small">New guide</button>
+        <span class="inline">
+          <button id="btnGuidePage" class="btn small">Open guide</button>
+          <button id="btnGuideFolder" class="btn small">Folder</button>
+        </span>
+      </div>
+      <div class="hint">Each guide is a folder with a PNG per step, guide.html and guide.docx (Word). It stays open until you click New guide.</div>
+    </section>
+  </div>
+
+  <!-- ---------- Hotkeys tab ---------- -->
+  <div class="page hidden" id="page-keys">
+    <section class="card">
+      <div id="keyRows"></div>
+      <div class="hint">Click a key box, then press the new keys. <kbd>Esc</kbd> cancels, <kbd>Delete</kbd> removes the hotkey.</div>
+      <div class="row">
+        <span></span>
+        <button id="btnKeysReset" class="btn small">Reset to defaults</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <label class="row toggle">
+        <span>Show private panel while recording</span>
+        <input id="chkPanel" type="checkbox">
+      </label>
+      <label class="row">
+        <span>Panel corner</span>
+        <select id="selCorner">
+          <option value="top-right">Top right</option>
+          <option value="top-left">Top left</option>
+          <option value="bottom-right">Bottom right</option>
+          <option value="bottom-left">Bottom left</option>
+        </select>
+      </label>
+      <div class="hint">The panel shows REC time, zoom state and your hotkeys. Only you see it - it is not in the video or screenshots.</div>
+    </section>
+  </div>
+
+  <footer id="status" class="status"></footer>
+
+  <script src="recorder.js"></script>
+  <script src="shot.js"></script>
+  <script src="hotkeys.js"></script>
+  <script src="control.js"></script>
+</body>
+</html>

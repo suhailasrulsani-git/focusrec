@@ -1,0 +1,86 @@
+<!doctype html>
+<html><body>
+<script>
+// Records PC sound as raw samples (mono, 48 kHz), so each voice line can be cut out cleanly.
+let ctx = null, chunks = [], total = 0;
+
+window.start = async () => {
+  // Clean-up off: by default Chromium treats PC sound like a mic (auto-gain, noise suppression, echo cancellation).
+  const s = await navigator.mediaDevices.getDisplayMedia({ video: true,
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2 } });
+  s.getVideoTracks().forEach((t) => t.stop());
+  ctx = new AudioContext({ sampleRate: 48000 });
+  const src = ctx.createMediaStreamSource(new MediaStream(s.getAudioTracks()));
+  const proc = ctx.createScriptProcessor(4096, 2, 1);
+  proc.onaudioprocess = (e) => {
+    const l = e.inputBuffer.getChannelData(0);
+    const r = e.inputBuffer.numberOfChannels > 1 ? e.inputBuffer.getChannelData(1) : l;
+    const m = new Float32Array(l.length);
+    for (let i = 0; i < l.length; i++) m[i] = (l[i] + r[i]) / 2;
+    chunks.push(m);
+    total += m.length;
+  };
+  const mute = ctx.createGain();
+  mute.gain.value = 0;                              // must be connected to run; muted so nothing plays back
+  src.connect(proc).connect(mute).connect(ctx.destination);
+  return ctx.sampleRate;
+};
+
+window.position = () => total;
+
+function samples(a, b) {
+  const out = new Float32Array(b - a);
+  let pos = 0;
+  for (const c of chunks) {
+    const s = Math.max(a, pos), e = Math.min(b, pos + c.length);
+    if (e > s) out.set(c.subarray(s - pos, e - pos), s - a);
+    pos += c.length;
+  }
+  return out;
+}
+
+const dbOf = (x) => 20 * Math.log10(x || 1e-9);
+
+// Loudness of everything between a and b (to check the PC is quiet before we start).
+window.level = (a, b) => {
+  const d = samples(a, b);
+  let s = 0;
+  for (const x of d) s += x * x;
+  return dbOf(Math.sqrt(s / (d.length || 1)));
+};
+
+// Cut one line out: trim the silence around it, bring the speech to the same loudness, return a WAV.
+window.cut = (a, b) => {
+  const sr = ctx.sampleRate, d = samples(a, b), frame = Math.round(sr * 0.01);
+  const loud = [];
+  for (let i = 0; i + frame <= d.length; i += frame) {
+    let s = 0;
+    for (let j = i; j < i + frame; j++) s += d[j] * d[j];
+    loud.push(dbOf(Math.sqrt(s / frame)));
+  }
+  const first = loud.findIndex((x) => x > -50);
+  let last = loud.length - 1;
+  while (last > 0 && loud[last] <= -50) last--;
+  if (first < 0) return null;
+  const from = Math.max(0, (first - 6) * frame), to = Math.min(d.length, (last + 25) * frame);   // 60 ms before, 250 ms after
+  let s = 0, n = 0, peak = 0;
+  for (let k = first; k <= last; k++) if (loud[k] > -45) {
+    for (let j = k * frame; j < (k + 1) * frame; j++) { s += d[j] * d[j]; n++; }
+  }
+  for (let j = from; j < to; j++) peak = Math.max(peak, Math.abs(d[j]));
+  let gain = Math.pow(10, (-19 - dbOf(Math.sqrt(s / n))) / 20);     // speech at -19 dBFS
+  gain = Math.min(gain, 0.94 / peak);                                // never clip
+  const len = to - from;
+  const v = new DataView(new ArrayBuffer(44 + len * 2));
+  const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + len * 2, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, len * 2, true);
+  for (let i = 0; i < len; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[from + i] * gain)) * 32767, true);
+  const u8 = new Uint8Array(v.buffer);
+  let bin = '';
+  for (let i = 0; i < u8.length; i += 32768) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));
+  return { wav: btoa(bin), ms: Math.round(len / sr * 1000), gainDb: +dbOf(gain).toFixed(1) };
+};
+</script>
+</body></html>
